@@ -54,9 +54,9 @@ function Rotation.OnUpdate(elapsed)
             local person = settings.counter%settings.chars + 1
             local party = math.floor(settings.counter%settings.chars * settings.groups)/settings.chars+1
             if settings.groups > 1 and (IsWarBandActive() or AutoChannel.isScenario()) then
-                AutoChannel.sendChatBandSay(ability..": Party "..tostring(party).." Person "..tostring(person))
+                AutoChannel.sendChatBand(ability..": Party "..tostring(party).." Person "..tostring(person))
             else
-                AutoChannel.sendChatPartySay(ability..": Person "..tostring(person))
+                AutoChannel.sendChatParty(ability..": Person "..tostring(person))
             end
             settings.counter = settings.counter + 1
             settings.now = 0
