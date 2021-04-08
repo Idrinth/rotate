@@ -10,7 +10,8 @@
       <Dependency name="AutoChannel" />
     </Dependencies>             
     <Files>         
-      <File name="rotation.lua" />   
+      <File name="rotation.lua" />
+      <File name="window.xml" />
     </Files>      
     <SavedVariables/>
     <OnInitialize>
@@ -19,6 +20,6 @@
     <OnUpdate>
       <CallFunction name="Rotation.OnUpdate" />
     </OnUpdate>
-    <OnShutdown/>          
+    <OnShutdown/>
   </UiMod>
 </ModuleFile>
