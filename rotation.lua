@@ -2,6 +2,8 @@ Rotation = {}
 
 local abilities = {}
 local time = 0
+local persons = {t={},h={},r={},m={}}
+local types = {t=L"Tank",h=L"Healer",r=L"Ranged",m=L"Melee"}
 local function paint()
     local counter = 0
     for ability,settings in pairs(abilities) do
@@ -16,7 +18,7 @@ local function paint()
             WindowSetShowing(window.."Stop", true)
         end
         WindowClearAnchors(window)
-        ButtonSetCheckButtonFlag(window.."Group", settings.groups==1)
+        LabelSetText(window.."Type", types[settings.chars])
         WindowAddAnchor(window, "topleft", "RotationAnchor", "topleft", 0, offset)
         WindowSetShowing(window, true)
         counter = counter + 1
@@ -30,21 +32,17 @@ local function slash(input)
     if not ability or not mode then
         log("You need to set ability("..tostring(ability)..") and mode("..tostring(mode)..")!")
         return
-    elseif mode:match("^[14][1-6]$") then
+    elseif mode:match("^[tmhr]$") then
         local frequency = input:match(" ([0-9]+)$")
         frequency = tonumber(frequency)
         if frequency < 1 or frequency > 60 then
             log("Frequency out of bounds(1-60)")
             return
         end
-        local groups, chars = mode:match("^([14])([1-6])$")
         log("Ability "..ability.." turned on!")
-        groups = tonumber(groups)
-        chars = tonumber(chars)
         abilities[ability] = {
             frequency=frequency,
-            chars=chars,
-            groups=groups,
+            chars=mode,
             counter=0,
             now=0,
             active=true
@@ -65,7 +63,7 @@ function Rotation.OnUpdate(elapsed)
         return
     end
     time = time - 1
-    if not GameData.Player.inCombat then
+    if false and not GameData.Player.inCombat then
         for ability,settings in pairs(abilities) do
             settings.now = 0
             settings.counter = 0
@@ -73,24 +71,14 @@ function Rotation.OnUpdate(elapsed)
         return
     end
     for ability,settings in pairs(abilities) do
-        if settings.active then
+        if settings.active and #persons[settings.chars] > 0 then
             settings.now = settings.now + 1
-            local multiparty = settings.groups > 1 and (IsWarBandActive() or AutoChannel.isScenario());
-            local frequency = settings.frequency/settings.chars
-            if multiparty then
-                frequency = frequency/settings.groups
-            end
-            frequency = math.ceil(frequency)
+            local frequency = math.ceil(settings.frequency/#persons[settings.chars])
             if settings.now == frequency then
-                local person = settings.counter%settings.chars + 1
-                local party = math.floor(settings.counter%settings.chars * settings.groups)/settings.chars+1
-                if multiparty then
-                    AutoChannel.sendChatBandSay(ability..": Party "..tostring(party).." Person "..tostring(person))
-                else
-                    AutoChannel.sendChatPartySay(ability..": Person "..tostring(person))
-                end
-                settings.counter = settings.counter + 1
-                if settings.counter > settings.chars * settings.groups then
+                local person = settings.counter%(#persons[settings.chars]) + 1
+                AutoChannel.sendChatBandSay(L"@"..persons[settings.chars][person]..L" "..towstring(ability))
+                settings.countaer = settings.counter + 1
+                if settings.counter > #persons[settings.chars] then
                     settings.counter = 1
                 end
                 settings.now = 0
@@ -104,6 +92,8 @@ function Rotation.OnInitialize()
     CreateWindow("RotationAnchor", true)
     WindowSetShowing("RotationAnchor", true)
     LayoutEditor.RegisterWindow( "RotationAnchor", L"RotationAnchor",L"", false, false, false, nil )
+    RegisterEventHandler(SystemData.Events.GROUP_UPDATED, "Rotation.OnGroupChange")
+    Rotation.OnGroupChange()
 end
 function Rotation.OnStop()
     local mouseWin = SystemData.MouseOverWindow.name
@@ -133,4 +123,41 @@ function Rotation.SwitchMode()
     elseif abilities[ability] then
         abilities[ability].groups = 4
     end
+end
+function addPlayer(name, career)
+    if not career then
+        return
+    end
+    career = career:match(L"(.*)\^.*")
+    if career == L"Disciple of Khaine" or career == L"Zelot" or career == L"Shaman" or career == L"Runepriest" or career == L"Archmage" or career == L"Warrior Priest" then
+        persons.h[#persons.h +1] = name
+    elseif career == L"Black Orc" or career == L"Blackguard" or career == L"Chosen" or career == L"Ironbreaker" or career == L"Swordmaster" or career == L"Knight of the Blazing Sun" then
+        persons.t[#persons.h +1] = name
+    elseif career == L"Choppa" or career == L"Marauder" or career == L"Witch Elf" or career == L"Witch Hunter" or career == L"White Lion" or career == L"Slayer" then
+        persons.m[#persons.h +1] = name
+    elseif career == L"Engineer" or career == L"Magus" or career == L"Squig Herder" or career == L"Sorcerer" or career == L"Bright Wizard" or career == L"Shadow Warrior" then
+        persons.r[#persons.h +1] = name
+    else
+        d(career)
+    end
+end
+function Rotation.OnGroupChange()
+    persons = {t={},h={},r={},m={}}
+    if IsWarBandActive() or AutoChannel.isScenario() then
+        for group, members in pairs(GetBattlegroupMemberData()) do
+            for _, player in pairs(members.players) do
+                if player and player.name then
+                    addPlayer(player.name, player.careerName)
+                end
+            end
+        end
+    else
+        addPlayer(GameData.Player.name, GameData.Player.career.name)
+        for _,player in pairs(GetGroupData()) do
+            if player and player.name then
+                addPlayer(player.name, player.careerName)
+            end
+        end
+    end
+    d(persons)
 end
