@@ -5,16 +5,16 @@
                 <AbsPoint x="20" y="20" />
             </Size>
             <Anchors>
-                <Anchor point="topleft" relativePoint="topleft" relativeTo="Root"/>
+                <Anchor point="left" relativePoint="left" relativeTo="Root"/>
             </Anchors>
             <Windows/>
     	</Window>
-    	<Window name="RotationAbilityTemplate" handleinput="true">
+    	<Window name="RotationAbilityTemplate">
             <Size>
-                <AbsPoint x="175" y="30" />
+                <AbsPoint x="275" y="30" />
             </Size>
     		<Windows>
-		    	<Label name="$parentAbility" font="font_default_text_small" maxchars="64" textalign="left">
+		    	<Label name="$parentAbility" handleinput="true" font="font_default_text_small" maxchars="64" textalign="left">
                     <Size>
                         <AbsPoint x="100" y="30" />
                     </Size>
@@ -23,24 +23,34 @@
                             <AbsPoint x="0" y="6" />
                         </Anchor>
                     </Anchors>
+                    <EventHandlers>
+                        <EventHandler event="OnRButtonUp" function="Rotation.Delete" />
+                    </EventHandlers>
 				</Label>
-                <Button name="$parentGroup" inherits="EA_Button_DefaultCheckBox">
+                <Label name="$parentType" font="font_default_text_small" maxchars="64" textalign="left">
                     <Anchors>
                         <Anchor point="topleft" relativePoint="topleft" relativeTo="$parent">
-                            <AbsPoint x="100" y="0" />
+                            <AbsPoint x="100" y="6" />
                         </Anchor>
                     </Anchors>
                     <Size>
-                        <AbsPoint x="22" y="22" />
+                        <AbsPoint x="75" y="30" />
                     </Size>
-                    <EventHandlers>
-                        <EventHandler event="OnLButtonUp" function="Rotation.SwitchMode" />
-                    </EventHandlers>
-                </Button>
+                </Label>
+                <Label name="$parentCooldown" font="font_default_text_small" maxchars="64" textalign="left">
+                    <Anchors>
+                        <Anchor point="topleft" relativePoint="topleft" relativeTo="$parent">
+                            <AbsPoint x="175" y="6" />
+                        </Anchor>
+                    </Anchors>
+                    <Size>
+                        <AbsPoint x="50" y="30" />
+                    </Size>
+                </Label>
                 <Button name="$parentStart" inherits="EA_Button_Default" font="font_default_text_small" textalign="center" handleinput="true">
                     <Anchors>
                         <Anchor point="topleft" relativePoint="topleft" relativeTo="$parent">
-                            <AbsPoint x="125" y="-4" />
+                            <AbsPoint x="225" y="-4" />
                         </Anchor>
                     </Anchors>
                     <Size>
@@ -56,7 +66,7 @@
                 <Button name="$parentStop" inherits="EA_Button_Default" font="font_default_text_small" textalign="center" handleinput="true">
                     <Anchors>
                         <Anchor point="topleft" relativePoint="topleft" relativeTo="$parent">
-                            <AbsPoint x="125" y="-4" />
+                            <AbsPoint x="225" y="-4" />
                         </Anchor>
                     </Anchors>
                     <Size>

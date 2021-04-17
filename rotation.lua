@@ -1,12 +1,11 @@
-Rotation = {}
+Rotation = {Abilities={}}
 
-local abilities = {}
 local time = 0
 local persons = {t={},h={},r={},m={}}
 local types = {t=L"Tank",h=L"Healer",r=L"Ranged",m=L"Melee"}
 local function paint()
     local counter = 0
-    for ability,settings in pairs(abilities) do
+    for ability,settings in pairs(Rotation.Abilities) do
         local offset = 30 * counter
         local window = "RotationAbility"..ability
         if not DoesWindowExist(window) then
@@ -14,11 +13,12 @@ local function paint()
             LabelSetText(window.."Ability", towstring(ability))
             ButtonSetText(window.."Start", L"Start")
             ButtonSetText(window.."Stop", L"Stop")
-            WindowSetShowing(window.."Start", false)
-            WindowSetShowing(window.."Stop", true)
         end
+        WindowSetShowing(window.."Start", not settings.active)
+        WindowSetShowing(window.."Stop", settings.active)
         WindowClearAnchors(window)
         LabelSetText(window.."Type", types[settings.chars])
+        LabelSetText(window.."Cooldown", towstring(tostring(settings.frequency).."s"))
         WindowAddAnchor(window, "topleft", "RotationAnchor", "topleft", 0, offset)
         WindowSetShowing(window, true)
         counter = counter + 1
@@ -26,6 +26,12 @@ local function paint()
 end
 local function log(message)
     TextLogAddEntry("Chat", SystemData.ChatLogFilters.SAY, towstring(message))
+end
+local function delete(ability)
+    log("Ability "..ability.." turned off!")
+    Rotation.Abilities[ability] = nil
+    DestroyWindow("RotationAbility"..ability)
+    paint()
 end
 local function slash(input)
     local mode,ability = input:match("^([a-z1-6]+) ([A-Za-z0-9]+)")
@@ -35,12 +41,12 @@ local function slash(input)
     elseif mode:match("^[tmhr]$") then
         local frequency = input:match(" ([0-9]+)$")
         frequency = tonumber(frequency)
-        if frequency < 1 or frequency > 60 then
-            log("Frequency out of bounds(1-60)")
+        if frequency < 1 or frequency > 120 then
+            log("Frequency out of bounds(1-120)")
             return
         end
         log("Ability "..ability.." turned on!")
-        abilities[ability] = {
+        Rotation.Abilities[ability] = {
             frequency=frequency,
             chars=mode,
             counter=0,
@@ -49,13 +55,18 @@ local function slash(input)
         }
         paint()
     elseif mode == "off" then
-        log("Ability "..ability.." turned off!")
-        abilities[ability] = nil
-        DestroyWindow("RotationAbility"..ability)
-        paint()
+        delete(ability)
     else
         log("Mode "..mode.." unknown")
     end
+end
+function Rotation.Delete()
+    local mouseWin = SystemData.MouseOverWindow.name
+    local ability = mouseWin:match("^RotationAbility(.+)Ability$")
+    if not ability then
+        return
+    end
+    delete(ability)
 end
 function Rotation.OnUpdate(elapsed)
     time = time + elapsed
@@ -63,65 +74,66 @@ function Rotation.OnUpdate(elapsed)
         return
     end
     time = time - 1
-    if false and not GameData.Player.inCombat then
-        for ability,settings in pairs(abilities) do
+    if not GameData.Player.inCombat then
+        for ability,settings in pairs(Rotation.Abilities) do
             settings.now = 0
             settings.counter = 0
         end
         return
     end
-    for ability,settings in pairs(abilities) do
+    for ability,settings in pairs(Rotation.Abilities) do
         if settings.active and #persons[settings.chars] > 0 then
             settings.now = settings.now + 1
+        end
+    end
+    for ability,settings in pairs(Rotation.Abilities) do
+        if settings.active and #persons[settings.chars] > 0 then
             local frequency = math.ceil(settings.frequency/#persons[settings.chars])
-            if settings.now == frequency then
+            if settings.now >= frequency then
                 local person = settings.counter%(#persons[settings.chars]) + 1
-                AutoChannel.sendChatBandSay(L"@"..persons[settings.chars][person]..L" "..towstring(ability))
-                settings.countaer = settings.counter + 1
+                AutoChannel.sendChatBand(L"@"..persons[settings.chars][person]..L" "..towstring(ability))
+                settings.counter = settings.counter + 1
                 if settings.counter > #persons[settings.chars] then
                     settings.counter = 1
                 end
-                settings.now = 0
+                settings.now = settings.now - frequency
                 return
             end
         end
     end
 end
 function Rotation.OnInitialize()
+    Rotation.Abilities = Rotation.Abilities or {}
     LibSlash.RegisterSlashCmd("rotate", slash)
     CreateWindow("RotationAnchor", true)
     WindowSetShowing("RotationAnchor", true)
     LayoutEditor.RegisterWindow( "RotationAnchor", L"RotationAnchor",L"", false, false, false, nil )
     RegisterEventHandler(SystemData.Events.GROUP_UPDATED, "Rotation.OnGroupChange")
     Rotation.OnGroupChange()
+    paint()
 end
 function Rotation.OnStop()
     local mouseWin = SystemData.MouseOverWindow.name
     local ability = mouseWin:match("^RotationAbility(.+)Stop")
+    if not ability then
+        return
+    end
     WindowSetShowing("RotationAbility"..ability.."Start", true)
     WindowSetShowing("RotationAbility"..ability.."Stop", false)
-    if abilities[ability] then
-        abilities[ability].active = false
+    if Rotation.Abilities[ability] then
+        Rotation.Abilities[ability].active = false
     end
 end
 function Rotation.OnStart()
     local mouseWin = SystemData.MouseOverWindow.name
     local ability = mouseWin:match("^RotationAbility(.+)Start")
+    if not ability then
+        return
+    end
     WindowSetShowing("RotationAbility"..ability.."Start", false)
     WindowSetShowing("RotationAbility"..ability.."Stop", true)
-    if abilities[ability] then
-        abilities[ability].active = true
-    end
-end
-function Rotation.SwitchMode()
-    local mouseWin = SystemData.MouseOverWindow.name
-    local ability = mouseWin:match("^RotationAbility(.+)Start")
-    local isGroup = not ButtonGetCheckButtonFlag(SystemData.MouseOverWindow.name)
-    ButtonSetCheckButtonFlag(SystemData.MouseOverWindow.name, isGroup)
-    if isGroup and abilities[ability] then
-        abilities[ability].groups = 1
-    elseif abilities[ability] then
-        abilities[ability].groups = 4
+    if Rotation.Abilities[ability] then
+        Rotation.Abilities[ability].active = true
     end
 end
 function addPlayer(name, career)
@@ -129,14 +141,14 @@ function addPlayer(name, career)
         return
     end
     career = career:match(L"(.*)\^.*")
-    if career == L"Disciple of Khaine" or career == L"Zelot" or career == L"Shaman" or career == L"Runepriest" or career == L"Archmage" or career == L"Warrior Priest" then
+    if career == L"Disciple of Khaine" or career == L"Zealot" or career == L"Shaman" or career == L"Runepriest" or career == L"Archmage" or career == L"Warrior Priest" then
         persons.h[#persons.h +1] = name
     elseif career == L"Black Orc" or career == L"Blackguard" or career == L"Chosen" or career == L"Ironbreaker" or career == L"Swordmaster" or career == L"Knight of the Blazing Sun" then
-        persons.t[#persons.h +1] = name
+        persons.t[#persons.t +1] = name
     elseif career == L"Choppa" or career == L"Marauder" or career == L"Witch Elf" or career == L"Witch Hunter" or career == L"White Lion" or career == L"Slayer" then
-        persons.m[#persons.h +1] = name
+        persons.m[#persons.m +1] = name
     elseif career == L"Engineer" or career == L"Magus" or career == L"Squig Herder" or career == L"Sorcerer" or career == L"Bright Wizard" or career == L"Shadow Warrior" then
-        persons.r[#persons.h +1] = name
+        persons.r[#persons.r +1] = name
     else
         d(career)
     end
@@ -159,5 +171,4 @@ function Rotation.OnGroupChange()
             end
         end
     end
-    d(persons)
 end
